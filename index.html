@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <!-- Chosen Palette: Warm Mt. Fuji Autumn - Warm Neutrals, Slate Blue (#1E3F5C / #2B5B84), Soft Terracotta Accent (#E06D53), Light Warm Sand Background (#F8F6F0) -->
+  <!-- Application Structure Plan: Designed as an interactive single-page itinerary guide. Features include: 1) Header & Quick Trip Metrics bar (flight, date, total spots), 2) Interactive Day Selector & Category Filter (Food, Hotel, Scenic, Culture) allowing users to focus on specific days or types of activities, 3) Interactive Search Bar for quick spot lookup, 4) Rich Card-based Daily Itinerary with verified real-world photo sources, details, maps links, and expandable tips/notes, 5) Practical Packing/Weather Checklist & Tips sidebar. This structure turns a static schedule into an adaptable, user-friendly trip companion on desktop and mobile devices. -->
+  <!-- Visualization & Content Choices: Daily itinerary cards with dynamic filtering (Vanilla JS) -> Interactive UI -> High usability without needing charts or SVGs -> Unicode icons and HTML/CSS visual indicators used. CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+  <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>富士山六日深度環遊手冊</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            fuji: {
+              primary: '#2B5B84',
+              dark: '#1E3F5C',
+              light: '#EBF3F9',
+              accent: '#E06D53',
+              accentSoft: '#FCF1EE',
+              bg: '#F8F6F0',
+              card: '#FFFFFF',
+              text: '#2C3E50',
+              muted: '#66788A'
+            }
+          },
+          fontFamily: {
+            sans: ['Noto Sans TC', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #F8F6F0;
+      color: #2C3E50;
+      font-family: 'Noto Sans TC', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* Custom Hide Scrollbar for Horizontal Navigation */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .spot-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .spot-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+    }
+  
+    :root{scroll-behavior:smooth}
+    body{line-height:1.65}
+    .photo-wrap{position:relative}
+    .photo-badge{position:absolute;left:12px;top:12px;background:rgba(17,35,50,.82);color:#fff;border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(8px);padding:5px 9px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.04em}
+    .photo-credit{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:7px 12px;background:#f8fafc;border-top:1px solid #eef2f6;font-size:10px;color:#7b8794}
+    .photo-credit a{color:#2B5B84;text-decoration:none;font-weight:700}
+    .photo-credit a:hover{text-decoration:underline}
+    .hero-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:26px auto 0;max-width:820px}
+    .hero-stat{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:10px 12px;text-align:center;backdrop-filter:blur(10px)}
+    .hero-stat b{display:block;font-size:18px}.hero-stat span{font-size:10px;color:#dbe7ef}
+    .route-strip{display:flex;gap:8px;overflow:auto;padding:2px 0 5px;scrollbar-width:none}
+    .route-strip::-webkit-scrollbar{display:none}
+    .route-chip{flex:0 0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:9px 12px;font-size:11px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+    .route-chip b{color:#1E3F5C}
+    .senior-panel{background:linear-gradient(135deg,#fff,#f7fbfd);border:1px solid #dce8ef;border-radius:22px;padding:18px;box-shadow:0 8px 28px rgba(30,63,92,.06)}
+    .senior-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .senior-item{background:#fff;border:1px solid #e8edf1;border-radius:15px;padding:12px;font-size:11px}
+    .senior-item strong{display:block;color:#1E3F5C;margin-bottom:3px;font-size:12px}
+    .alert-box{border-radius:16px;padding:13px 15px;font-size:12px;line-height:1.7}
+    .alert-box.warn{background:#fff7ed;border:1px solid #fed7aa;color:#7c4a03}
+    .alert-box.info{background:#eff8ff;border:1px solid #cfe8f8;color:#24536f}
+    .alert-box.good{background:#f0fdf4;border:1px solid #ccefd5;color:#24633a}
+    .lightbox{position:fixed;inset:0;background:rgba(5,15,24,.92);z-index:100;display:none;align-items:center;justify-content:center;padding:24px}
+    .lightbox.open{display:flex}
+    .lightbox img{max-width:92vw;max-height:82vh;object-fit:contain;border-radius:14px;box-shadow:0 20px 80px rgba(0,0,0,.5)}
+    .lightbox button{position:absolute;right:18px;top:18px;border:0;background:rgba(255,255,255,.14);color:#fff;width:42px;height:42px;border-radius:50%;font-size:24px;cursor:pointer}
+    .lightbox-caption{position:absolute;bottom:20px;left:20px;right:20px;text-align:center;color:#fff;font-size:12px}
+    .spot-card img{cursor:zoom-in}
+    .print-btn{cursor:pointer}
+    @media(max-width:700px){.hero-grid{grid-template-columns:repeat(2,1fr)}.senior-grid{grid-template-columns:repeat(2,1fr)}}
+    @media print{.sticky,.print-btn,#searchInput,.cat-btn,.day-tab{display:none!important}.spot-card{break-inside:avoid}.lightbox{display:none!important}body{background:#fff}.photo-credit a{color:#333}}
+
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+  <!-- Header Header Banner -->
+  <header class="relative bg-cover bg-center text-white py-12 px-4 sm:px-6 lg:px-8 shadow-md" style="background-image: linear-gradient(180deg, rgba(20, 38, 55, 0.8) 0%, rgba(20, 38, 55, 0.9) 100%), url('https://cdn.theabroadguide.com/media/mt-fuji-day-trip-by-shinkansen-private-car-with-local-culture-d334-5550926P14-1.jpg');">
+    <div class="max-w-5xl mx-auto text-center">
+      <span class="inline-block bg-white/20 backdrop-blur-md px-4 py-1 rounded-full text-xs sm:text-sm font-medium tracking-wider mb-3">
+        🇯🇵 JAPAN AUTUMN TRIP 2026
+      </span>
+      <h1 class="text-2xl sm:text-4xl font-bold tracking-tight mb-2">
+        富士山全景六日深度環遊手冊
+      </h1>
+      <p class="text-sm sm:text-base text-gray-200 max-w-2xl mx-auto font-light">
+        跨越箱根溫泉、三島湧水、富士南麓茶園、靜岡駿河灣、精進湖、五合目與古都鎌倉
+      </p>
+
+      <!-- Flight Summary Info -->
+      <div class="mt-6 flex flex-wrap justify-center gap-3 text-xs sm:text-sm font-semibold">
+        <div class="bg-white/90 text-fuji-dark px-4 py-2 rounded-xl shadow-sm flex items-center gap-2">
+          <span>✈️ 去程：10/16 (五) 日本航空 JL96</span>
+          <span class="text-fuji-accent font-mono font-bold">TSA 09:40 ➔ HND 13:50</span>
+        </div>
+        <div class="bg-white/90 text-fuji-dark px-4 py-2 rounded-xl shadow-sm flex items-center gap-2">
+          <span>✈️ 回程：10/21 (三) 日本航空 JL99</span>
+          <span class="text-fuji-accent font-mono font-bold">HND 18:25 ➔ TSA 20:50</span>
+        </div>
+      </div>
+
+      <div class="hero-grid">
+        <div class="hero-stat"><b>6D5N</b><span>六天五夜</span></div>
+        <div class="hero-stat"><b>25+</b><span>行程節點</span></div>
+        <div class="hero-stat"><b>90+</b><span>長輩友善設計</span></div>
+        <div class="hero-stat"><b>🚗</b><span>私人車移動</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Day & Navigation Bar -->
+  <nav class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
+    <div class="max-w-5xl mx-auto px-4 py-3">
+      <!-- Day Tabs -->
+      <div class="flex overflow-x-auto space-x-2 no-scrollbar pb-1 text-xs sm:text-sm font-medium">
+        <button onclick="filterDay('all')" id="tab-all" class="day-tab px-4 py-2 rounded-full whitespace-nowrap transition bg-fuji-primary text-white font-semibold">
+          全六日總覽
+        </button>
+        <button onclick="filterDay('day1')" id="tab-day1" class="day-tab px-4 py-2 rounded-full whitespace-nowrap transition bg-gray-100 text-gray-700 hover:bg-gray-200">
+          Day 1 (10/16) 箱根
+        </button>
+        <button onclick="filterDay('day2')" id="tab-day2" class="day-tab px-4 py-2 rounded-full whitespace-nowrap transition bg-gray-100 text-gray-700 hover:bg-gray-200">
+          Day 2 (10/17) 蘆之湖・三島
+        </button>
+        <button onclick="filterDay('day3')" id="tab-day3" class="day-tab px-4 py-2 rounded-full whitespace-nowrap transition bg-gray-100 text-gray-700 hover:bg-gray-200">
+          Day 3 (10/18) 富士南麓・靜岡
+        </button>
+        <button onclick="filterDay('day4')" id="tab-day4" class="day-tab px-4 py-2 rounded-full whitespace-nowrap transition bg-gray-100 text-gray-700 hover:bg-gray-200">
+          Day 4 (10/19) 清水・精進湖
+        </button>
+        <button onclick="filterDay('day5')" id="tab-day5" class="day-tab px-4 py-2 rounded-full whitespace-nowrap transition bg-gray-100 text-gray-700 hover:bg-gray-200">
+          Day 5 (10/20) 五合目・河口湖
+        </button>
+        <button onclick="filterDay('day6')" id="tab-day6" class="day-tab px-4 py-2 rounded-full whitespace-nowrap transition bg-gray-100 text-gray-700 hover:bg-gray-200">
+          Day 6 (10/21) 鎌倉・返台
+        </button>
+      </div>
+
+      <!-- Category Filter & Search Row -->
+      <div class="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <span class="text-gray-400 font-medium">分類:</span>
+          <button onclick="filterCategory('all')" class="cat-btn px-2.5 py-1 rounded bg-fuji-primary text-white font-medium" id="cat-all">全部</button>
+          <button onclick="filterCategory('scenic')" class="cat-btn px-2.5 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200" id="cat-scenic">🏞️ 景點</button>
+          <button onclick="filterCategory('food')" class="cat-btn px-2.5 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200" id="cat-food">🍱 美食</button>
+          <button onclick="filterCategory('hotel')" class="cat-btn px-2.5 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200" id="cat-hotel">🏨 住宿</button>
+          <button onclick="filterCategory('culture')" class="cat-btn px-2.5 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200" id="cat-culture">⛩️ 文化史蹟</button>
+        </div>
+
+        <div class="relative flex-1 max-w-xs min-w-[160px]">
+          <input type="text" id="searchInput" oninput="handleSearch()" placeholder="搜尋景點、餐廳、地點..." class="w-full pl-7 pr-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-fuji-primary">
+          <span class="absolute left-2 top-1.5 text-gray-400">🔍</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="max-w-5xl mx-auto px-4 py-8 flex-1 w-full space-y-10">
+    <div class="route-strip" aria-label="六日路線">
+      <div class="route-chip"><b>10/16</b> 羽田 → 箱根</div>
+      <div class="route-chip"><b>10/17</b> 箱根 → 三島</div>
+      <div class="route-chip"><b>10/18</b> 三島 → 富士 → 靜岡</div>
+      <div class="route-chip"><b>10/19</b> 清水 → 三保 → 精進湖</div>
+      <div class="route-chip"><b>10/20</b> 五合目 → 河口湖</div>
+      <div class="route-chip"><b>10/21</b> 河口湖 → 鎌倉 → 羽田</div>
+    </div>
+
+    <section class="senior-panel">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div class="text-xs font-bold text-fuji-primary tracking-wider">90歲長輩版｜這趟旅程的設計邏輯</div>
+          <h2 class="text-lg sm:text-xl font-bold text-fuji-dark mt-1">不是塞景點，而是把「舒服」放進行程裡</h2>
+        </div>
+        <button onclick="window.print()" class="print-btn text-xs font-bold text-fuji-primary border border-fuji-primary rounded-lg px-3 py-2 bg-white">🖨️ 列印／存 PDF</button>
+      </div>
+      <div class="senior-grid mt-4">
+        <div class="senior-item"><strong>🚗 車到近處</strong>優先選可上下車、可短停的動線。</div>
+        <div class="senior-item"><strong>🪑 隨時能坐</strong>每段景點控制在可隨時回車休息的範圍。</div>
+        <div class="senior-item"><strong>🚻 廁所優先</strong>長途移動前後安排休息點，不硬撐。</div>
+        <div class="senior-item"><strong>🌤️ 看天氣調整</strong>富士山景點保留「看得到才停」的彈性。</div>
+      </div>
+      <div class="alert-box warn mt-4"><b>⚠️ 三個最需要留意的地方：</b>① 箱根風雅部分房型位於二樓且無電梯；② 精進マウントホテル官方標示並非無障礙設計；③ 10/20 五合目受天候與富士 Subaru Line 通行狀況影響，當天應以官方公告為準。</div>
+    </section>
+
+
+    <!-- Counter Bar -->
+    <div class="flex items-center justify-between text-xs sm:text-sm text-fuji-muted bg-white px-4 py-2.5 rounded-xl border border-gray-200/80 shadow-sm">
+      <div>
+        顯示項目：<span id="spotCounter" class="font-bold text-fuji-dark">23</span> 個地點
+      </div>
+      <div class="text-xs text-gray-400">
+        點擊下方卡片的 Map 按鈕可開啟 Google Maps 導航
+      </div>
+    </div>
+
+    <!-- DAY 1 SECTION -->
+    <section class="day-group space-y-4" id="section-day1" data-day="day1">
+      <div class="bg-gradient-to-r from-fuji-dark to-fuji-primary text-white p-5 rounded-2xl shadow-sm">
+        <div class="text-xs font-semibold text-fuji-light tracking-wider uppercase">Day 1 ｜ 10月16日 (週五)</div>
+        <h2 class="text-xl sm:text-2xl font-bold mt-1">箱根初體驗：放慢腳步、適應環境</h2>
+        <p class="text-xs sm:text-sm text-gray-200 mt-2 font-light">
+          本區段為抵達日本首日，自羽田機場取車或搭乘接駁專車前往箱根仙石原溫泉區。入住別墅風格旅宿，享受露天溫泉與迎賓會席料理，讓長輩舒適洗去飛行疲憊。
+        </p>
+        <div class="mt-3 inline-block bg-white/15 px-3 py-1 rounded-lg text-xs font-medium">
+          🏨 宿：箱根風雅（Sengokuhara Bettei Fuga）含一泊二食
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Spot 1.1 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="transit" data-keywords="羽田機場 交通 租車 JL96">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://www.gotokyo.org/tc/plan/airport-access/haneda-airport/images/sub004.jpg" referrerpolicy="no-referrer" alt="羽田機場" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · GO TOKYO</span><a href="https://www.gotokyo.org/tc/plan/airport-access/haneda-airport/" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 13:50 - 15:00
+              </span>
+              <span class="absolute top-3 right-3 bg-gray-800/80 text-white text-xs px-2 py-0.5 rounded">
+                交通節點
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">東京羽田國際機場 (HND)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>東京都大田區羽田空港</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 70 分鐘 (入境檢驗與提領行李)</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>往仙石原約 120-140 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 JL96 班機於 13:50 降落。辦理入境手續、提領行李後，前往租車櫃檯辦理取車，或搭乘箱根直達高速巴士/包車接送。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=15366471343750838933" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 1.2 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="hotel" data-keywords="箱根風雅 仙石原 溫泉 住宿 會席料理">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://static.yukoyuko.net/photo/5495/bath/a0L6F00001CNA8uUAH/1/0003.jpg" referrerpolicy="no-referrer" alt="箱根風雅" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · ゆこゆこ</span><a href="https://www.yukoyuko.net/5495/gallery" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 17:30 - 入住
+              </span>
+              <span class="absolute top-3 right-3 bg-emerald-100 text-emerald-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🏨 溫泉旅宿
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">箱根風雅 (Sengokuhara Bettei Fuga)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>神奈川縣足柄下郡箱根町仙石原 1246-773</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>宿一晚</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🍱 晚餐安排：</span><span>館內創作會席料理</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 坐落於安靜的仙石原別墅區。晚餐品嘗精緻創作會席料理，並可享用天然大湧谷白濁溫泉與岩盤浴放鬆。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=13083652873426173402" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- DAY 2 SECTION -->
+    <section class="day-group space-y-4" id="section-day2" data-day="day2">
+      <div class="bg-gradient-to-r from-fuji-dark to-fuji-primary text-white p-5 rounded-2xl shadow-sm">
+        <div class="text-xs font-semibold text-fuji-light tracking-wider uppercase">Day 2 ｜ 10月17日 (週六)</div>
+        <h2 class="text-xl sm:text-2xl font-bold mt-1">箱根 ➔ 三島：湖光山色與湧水漫步</h2>
+        <p class="text-xs sm:text-sm text-gray-200 mt-2 font-light">
+          本日自仙石原出發至蘆之湖搭乘海盜船，參訪箱根神社與成川美術館；午餐精選直面湖景的 Bakery & Table，下午跨越山界至三島市區體驗樂壽園與三嶋大社，晚上品嘗靜岡伏流水養殖的傳奇鰻魚飯。
+        </p>
+        <div class="mt-3 inline-block bg-white/15 px-3 py-1 rounded-lg text-xs font-medium">
+          🏨 宿：富士三島東急酒店（Fujisan Mishima Tokyu Hotel）含早餐
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Spot 2.1 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="scenic" data-keywords="蘆之湖海盜船 桃源台港 元箱根港 富士山">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://cdn.prod.website-files.com/5ebfb3d449293e250fbab4e4/604f919f45f8f3da513b22e6_1.%E9%81%A0%E6%99%AF%E3%81%AE%E5%86%99%E7%9C%9F-p-1600.jpeg" referrerpolicy="no-referrer" alt="蘆之湖海盜船" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · Hakone sightseeing photo</span><a href="https://www.hakonenavi.jp/international/tw/transportation/hakone-kankosen" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 09:30 - 10:20
+              </span>
+              <span class="absolute top-3 right-3 bg-blue-100 text-blue-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🏞️ 景觀遊船
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">蘆之湖海盜船 (桃源台港 ➔ 元箱根港)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>神奈川縣足柄下郡箱根町元箱根 164 (桃源台港)</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>航程約 35-40 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>飯店出發約 15 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 從甲板遠眺箱根群山與水中鳥居，天氣晴朗時可遠眺富士山積雪景致。無障礙設施完善，極度適合長輩乘風賞景。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=17565780521360057193" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 2.2 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="culture" data-keywords="箱根神社 平和鳥居 杉木參道 神社">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://anniversarys-mag.jp/img/p/pixta_62581861_M.jpg?w=730" referrerpolicy="no-referrer" alt="箱根神社" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · アニーお祝い体験マガジン</span><a href="https://anniversarys-mag.jp/48865" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 10:30 - 11:30
+              </span>
+              <span class="absolute top-3 right-3 bg-amber-100 text-amber-800 font-semibold text-xs px-2 py-0.5 rounded">
+                ⛩️ 文化史蹟
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">箱根神社 ＆ 平和的鳥居</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>神奈川縣足柄下郡箱根町元箱根 80-1</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 60 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚶 步行前往：</span><span>由碼頭步行約 10 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 漫步在樹齡逾百年的高聳杉木林蔭參道中，感受靜謐莊嚴氣息。湖畔水上鳥居拍照人潮較多，亦可由上方觀景台欣賞。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=12648792070381710926" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 2.3 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="food" data-keywords="Bakery & Table 箱根 湖景午餐 足湯 三明治 和牛漢堡排">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://svcstrg.cld.navitime.jp/travelguide/p14110037/p14110037_02.jpg" referrerpolicy="no-referrer" alt="Bakery & Table" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · NAVITIME Travel</span><a href="https://travel.navitime.com/ja/area/jp/spot/02301-2100039" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 11:45 - 13:00
+              </span>
+              <span class="absolute top-3 right-3 bg-rose-100 text-rose-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🍱 湖景午餐
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">午餐：Bakery & Table 箱根</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>神奈川縣足柄下郡箱根町元箱根 9-1</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 75 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">💡 特色點評：</span><span>非鰻魚首選，足湯座位、排餐與現烤麵包</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 直面蘆之湖美景，2F/3F 餐廳提供精緻三明治、和牛漢堡排與新鮮麵包，戶外露台設有溫泉足湯席，氣氛悠閒好消遣。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=14434771746205857487" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 2.4 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="culture" data-keywords="樂壽園 三嶋大社 湧水 池塘 福太郎餅">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://showmeikan.com/wp-content/uploads/2024/07/IMG_8927.jpg" referrerpolicy="no-referrer" alt="樂壽園三嶋大社" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · 昭明館</span><a href="https://showmeikan.com/%E6%A5%BD%E5%AF%BF%E5%9C%92%E3%81%AE%E5%B0%8F%E6%B5%9C%E6%B1%A0%E3%81%8C%E6%BA%80%E6%B0%B4%E3%81%AB%E3%81%AA%E3%82%8A%E3%81%BE%E3%81%97%E3%81%9F/" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 14:00 - 16:30
+              </span>
+              <span class="absolute top-3 right-3 bg-amber-100 text-amber-800 font-semibold text-xs px-2 py-0.5 rounded">
+                ⛩️ 名勝古蹟
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">樂壽園 ＆ 三嶋大社</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>靜岡縣三島市一番町 19-3 / 大宮町 2-1-5</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 2.5 小時</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>箱根出發約 45 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 樂壽園建於三島熔岩之上，天然湧水池與日式庭園極美；三嶋大社為伊豆第一大社，參道平坦開闊，可試吃特產「福太郎餅」。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=1372551465998633719" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 2.5 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="food" data-keywords="三島 櫻家 Sakuraya 鰻魚飯 伏流水老店 晚餐">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://cdn-ak.f.st-hatena.com/images/fotolife/e/erixeri/20250322/20250322142335.jpg" referrerpolicy="no-referrer" alt="櫻家鰻魚飯" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · erieriのまいにち</span><a href="https://erixeri.hatenablog.com/entry/2025/03/22/234358" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 17:30 - 19:00
+              </span>
+              <span class="absolute top-3 right-3 bg-rose-100 text-rose-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🍱 名物鰻魚料理
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">晚餐：三島 櫻家 (Sakuraya)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>靜岡縣三島市廣小路町 13-2</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 80 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚶 步行前往：</span><span>由三嶋大社步行約 12 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 創業於安政三年的傳奇老店！利用富士山伏流水養殖去除泥味，鰻魚烤至如豆腐般鬆軟綿密，醬香清雅，長輩接受度極高。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=18367923797669324027" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 2.6 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="hotel" data-keywords="富士三島東急酒店 Mishima Tokyu 溫泉 富士山景 住宿">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://images.squarespace-cdn.com/content/v1/64b65250c4c85e73afe49eae/24fa8356-bd7f-4280-965b-95bf036dec54/%C3%A8O%C3%A8%C2%A4%C3%B4%C3%BD%C3%89%E2%95%9D%C3%BB%E2%95%A9%C3%BB%C3%9A%C3%AEi%C3%BC%401653.jpg" referrerpolicy="no-referrer" alt="富士三島東急酒店" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · Doone Design</span><a href="https://www.doonedesign.com/work/fujisan-tokyu-hotel-mishima" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 19:30 - 入住
+              </span>
+              <span class="absolute top-3 right-3 bg-emerald-100 text-emerald-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🏨 景觀飯店
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">富士三島東急酒店 (Fujisan Mishima Tokyu)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>靜岡縣三島市一番町 17-1</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>宿一晚</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">♨️ 設施亮點：</span><span>14 樓富士山景展望大浴場</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 緊鄰 JR 三島站南口，頂樓大浴場與露天風呂享有極佳的富士山視野，能有效舒緩整天走動的雙腿。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=10927786444062193918" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- DAY 3 SECTION -->
+    <section class="day-group space-y-4" id="section-day3" data-day="day3">
+      <div class="bg-gradient-to-r from-fuji-dark to-fuji-primary text-white p-5 rounded-2xl shadow-sm">
+        <div class="text-xs font-semibold text-fuji-light tracking-wider uppercase">Day 3 ｜ 10月18日 (週日)</div>
+        <h2 class="text-xl sm:text-2xl font-bold mt-1">三島 ➔ 富士山麓茶園 ➔ 富士宮 ➔ 靜岡市區</h2>
+        <p class="text-xs sm:text-sm text-gray-200 mt-2 font-light">
+          欣賞大淵笹場綠意梯田與富士山合影、造訪熱門打卡點夢之大橋，隨後前往富士宮市參觀坂茂設計的世界遺產中心，品嘗 B 級美食富士宮炒麵，晚上入住靜岡市區頂級溫泉飯店 Ole Inn。
+        </p>
+        <div class="mt-3 inline-block bg-white/15 px-3 py-1 rounded-lg text-xs font-medium">
+          🏨 宿：靜岡奧萊飯店（Hotel Ole Inn Shizuoka）含天然溫泉與早餐
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Spot 3.1 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="scenic" data-keywords="大淵笹場 茶園 梯田 富士山 攝影點">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://c-ssl.duitang.com/uploads/blog/202402/25/Q2SAnWMi85OqB6.jpeg" referrerpolicy="no-referrer" alt="大淵笹場" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · 大淵笹場實景照片</span><a href="https://v6.duitang.com/blog/?id=1515025289" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 09:00 - 10:20
+              </span>
+              <span class="absolute top-3 right-3 bg-blue-100 text-blue-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🏞️ 絕景攝影點
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">大淵笹場 (Obuchi Sasaba)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>靜岡縣富士市大淵 1445</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 60-80 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>三島出發約 40 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 靜岡代表性梯田茶園！這裡完全無任何電線桿阻擋視線，碧綠茶樹襯托雄偉富士山，清晨光線柔和極好拍照散步。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=13054178345758223630" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 3.2 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="scenic" data-keywords="夢之大橋 富士山 陸橋 打卡點 富士市">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://i0.wp.com/banbi.tw/wp-content/uploads/20230420163355_55.jpg" referrerpolicy="no-referrer" alt="夢之大橋" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · Banbi 斑比美食旅遊</span><a href="https://banbi.tw/fujisan-yumeno-ohashi-bridge/" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 10:50 - 11:30
+              </span>
+              <span class="absolute top-3 right-3 bg-blue-100 text-blue-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🏞️ 人氣打卡點
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">富士山夢之大橋 (Yume no Ohashi)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>靜岡縣富士市蓼原 國道139號陸橋</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 30-40 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>大淵笹場出發約 25 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 人行陸橋階梯彷彿直通雲霄富士山。周邊設有專用停車場，請務必依規停車並行走斑馬線以策安全。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=14467023348123049581" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 3.3 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="culture" data-keywords="世界遺產中心 坂茂 倒立富士山 富士宮炒麵 午餐">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://kimamatravelogue.com/wp-content/uploads/2024/07/6df2cbd9a76718f457d980a9d1ee34a6.jpg" referrerpolicy="no-referrer" alt="世界遺產中心" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · キマタビ</span><a href="https://kimamatravelogue.com/shizuoka-mtfuji-whc/" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 12:00 - 14:30
+              </span>
+              <span class="absolute top-3 right-3 bg-amber-100 text-amber-800 font-semibold text-xs px-2 py-0.5 rounded">
+                ⛩️ 建築美學・午餐
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">富士山世界遺產中心 ＆ 午餐</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>靜岡縣富士宮市宮町 5-12</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 2.5 小時 (含午餐)</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🍱 午餐推薦：</span><span>周邊品嘗知名 B級美食「富士宮炒麵」</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 坂茂設計倒立富士山木格建築，鏡面水池倒影極美。館內設有螺旋無障礙斜坡。午餐推薦品嘗嚼勁十足、香味濃郁的富士宮炒麵。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=11145155160913997232" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 3.4 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="hotel" data-keywords="靜岡奧萊飯店 Ole Inn 天然溫泉 靜岡關東煮 青葉橫丁">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://www.ole-inn.com/datas/cache/images/2020/07/21/1200x800_ea1e9d427fb5664c32c517a73e421e58_afee24b5bd632deef9916b77c05d18a7cd241b9e.jpg" referrerpolicy="no-referrer" alt="靜岡奧萊飯店" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · Hotel Ole Inn 官方</span><a href="https://www.ole-inn.com/news/13/" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 16:00 - 入住
+              </span>
+              <span class="absolute top-3 right-3 bg-emerald-100 text-emerald-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🏨 天然溫泉飯店
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">靜岡奧萊飯店 (Hotel Ole Inn Shizuoka)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>靜岡縣靜岡市葵區常磐町 2-1-1</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>宿一晚</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🍱 晚餐建議：</span><span>步行至青葉橫丁品嘗「靜岡關東煮」</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 市中心評價頂尖！頂樓備有市區罕見的自家源泉天然溫泉露天風呂。晚上可順道品嘗黑色高湯特製靜岡關東煮。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=11929318856985790468" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- DAY 4 SECTION -->
+    <section class="day-group space-y-4" id="section-day4" data-day="day4">
+      <div class="bg-gradient-to-r from-fuji-dark to-fuji-primary text-white p-5 rounded-2xl shadow-sm">
+        <div class="text-xs font-semibold text-fuji-light tracking-wider uppercase">Day 4 ｜ 10月19日 (週一)</div>
+        <h2 class="text-xl sm:text-2xl font-bold mt-1">靜岡 ➔ 日本平・清水港・三保松原 ➔ 精進湖</h2>
+        <p class="text-xs sm:text-sm text-gray-200 mt-2 font-light">
+          登日本平夢露台無障礙木廊俯瞰清水港，中午至日本第一鮪魚港清水市場享用鮮美海鮮丼，下午遊覽浮世繪景致三保松原，傍晚北上抵達富士五湖中最幽靜的精進湖。
+        </p>
+        <div class="mt-3 inline-block bg-white/15 px-3 py-1 rounded-lg text-xs font-medium">
+          🏨 宿：精進山飯店（Shoji Mount Hotel）含一泊二食
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Spot 4.1 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="scenic" data-keywords="日本平夢露台 隈研吾 清水港 展望台 駿河灣">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://www.avia.travel/images/tour/nihondaira_yume_terrace.jpg" referrerpolicy="no-referrer" alt="日本平夢露台" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · AVIATOUR</span><a href="https://www.avia.travel/tour/detail/53637/discover_japan_delight_nihondaira_yume_terrace" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 09:15 - 10:30
+              </span>
+              <span class="absolute top-3 right-3 bg-blue-100 text-blue-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🏞️ 景觀建築
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">日本平夢露台 (Nihondaira Yume Terrace)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>靜岡縣靜岡市清水區草薙 600-1</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 75 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>靜岡市區出發約 25 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 隈研吾設計木構迴廊，電梯直達展望層，360 度俯瞰清水港、伊豆半島與無死角富士山，步道平緩好走無障礙。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=11893322131920701198" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 4.2 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="food" data-keywords="清水魚市場 河岸之市 鮪魚海鮮丼 櫻花蝦 天婦羅 午餐">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://assets.st-note.com/production/uploads/images/94811124/picture_pc_32c1229027845b617df40b40c9b5ee36.jpg?width=1200" referrerpolicy="no-referrer" alt="清水魚市場" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · note</span><a href="https://note.com/shigajima_cap101/n/ndc4ab2095d4b" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 11:00 - 12:45
+              </span>
+              <span class="absolute top-3 right-3 bg-rose-100 text-rose-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🍱 海鮮午餐首選
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">清水魚市場 河岸之市 ＆ 午餐</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>靜岡縣靜岡市清水區島崎町 149</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 1.5 小時</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">💡 食材特色：</span><span>日本最大鮪魚產地！新鮮鮪魚丼與熟食天婦羅</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 清水港鮪魚卸貨量居全日本之冠。「魚食館」內推薦現切黑鮪魚海鮮丼，不吃生食亦有酥炸櫻花蝦天婦羅與烤魚定食。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=12140409941195325785" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 4.3 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="culture" data-keywords="三保松原 羽衣之松 神之道 世界遺產 浮世繪">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://resize-image.vocus.cc/resize?norotation=true&quality=80&sign=7fHiYCwskOoEC1PjzhyT69LpXfzI8wZvtkhGQS9sh0I&url=https%3A%2F%2Fimages.vocus.cc%2F4a16f998-82fb-4db4-8676-7f266d255f33.jpg&width=740" referrerpolicy="no-referrer" alt="三保松原" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · VOCUS</span><a href="https://vocus.cc/article/65e91bc2fd897800013fe530" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 13:15 - 14:30
+              </span>
+              <span class="absolute top-3 right-3 bg-amber-100 text-amber-800 font-semibold text-xs px-2 py-0.5 rounded">
+                ⛩️ 世界文化遺產
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">三保松原 (Miho no Matsubara)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>靜岡縣靜岡市清水區三保 1338-45</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 75 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>清水港出發約 15 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 沿著 500 公尺木棧道「神之道」漫步，欣賞七公里海岸線數萬株黑松與遠方富士山交織的古典浮世繪視覺衝擊。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=12739221190479133499" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 4.4 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="hotel" data-keywords="精進山飯店 Shoji Mount Hotel 精進湖 抱子富士 湖景">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://cdn-ak.f.st-hatena.com/images/fotolife/s/sattisatisatti/20250602/20250602145237.jpg" referrerpolicy="no-referrer" alt="精進山飯店" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · 旅客實拍</span><a href="https://satti.hatenablog.com/entry/2025/06/03/102144" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 16:45 - 入住
+              </span>
+              <span class="absolute top-3 right-3 bg-emerald-100 text-emerald-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🏨 富士湖景旅宿
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">精進山飯店 (Shoji Mount Hotel)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>山梨縣南都留郡富士河口湖町精進 301</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>宿一晚 (含一泊二食)</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>三保出發經朝霧高原約 90 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 坐落於富士五湖中最安靜的精進湖畔，所有客房正對富士山「抱子富士」（大室山）奇景，晨霧倒影極具空靈之美。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=150645009804825946" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- DAY 5 SECTION -->
+    <section class="day-group space-y-4" id="section-day5" data-day="day5">
+      <div class="bg-gradient-to-r from-fuji-dark to-fuji-primary text-white p-5 rounded-2xl shadow-sm">
+        <div class="text-xs font-semibold text-fuji-light tracking-wider uppercase">Day 5 ｜ 10月20日 (週二)</div>
+        <h2 class="text-xl sm:text-2xl font-bold mt-1">精進湖晨景 ➔ 富士山五合目 ➔ 河口湖畔</h2>
+        <p class="text-xs sm:text-sm text-gray-200 mt-2 font-light">
+          開車登上海拔 2,305 公尺五合目近距離觸摸富士山岩壁，參訪小御嶽神社；午後至河口湖大石公園欣賞滿山火紅掃帚草（波波草），晚餐享用專為長輩特製軟嫩好消化的「黃金餺飥麵」。
+        </p>
+        <div class="mt-3 inline-block bg-white/15 px-3 py-1 rounded-lg text-xs font-medium">
+          🏨 宿：Sunnide Resort（河口湖溫泉名宿，湖北岸逆富士第一排）
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Spot 5.1 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="scenic" data-keywords="富士山五合目 小御嶽神社 Subaru Line 高山 雲海">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Mount_fuji_5th_station.jpg/3840px-Mount_fuji_5th_station.jpg" referrerpolicy="no-referrer" alt="富士山五合目" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · Wikimedia Commons</span><a href="https://commons.wikimedia.org/wiki/File:Mount_fuji_5th_station.jpg" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 09:30 - 12:30
+              </span>
+              <span class="absolute top-3 right-3 bg-blue-100 text-blue-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🏞️ 高山壯麗地標
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">富士山五合目 ＆ 富士山小御嶽神社</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>山梨縣富士吉田市上吉田 5617 (Subaru Line 終點)</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 2.5 - 3 小時</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>精進湖出發約 45 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 抵達海拔 2,305 公尺五合目，近距離觸摸富士山岩壁、眺望腳下雲海。參拜小御嶽神社，走平緩御中道步道。（請準備防風外套保暖）
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=12398418049285093122" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 5.2 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="scenic" data-keywords="大石公園 河口湖 掃帚草 波波草 秋季 富士山">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://www.colatour.com.tw/COLA_AppFiles/A03T_Ticket/Itinerary/2300/Images/11027-03.jpg" referrerpolicy="no-referrer" alt="大石公園" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · Colatour</span><a href="https://www.colatour.com.tw/C10T_Ticket/C10T02_Feature.aspx?ItemNo=11027&QueryType=%E5%85%A8%E9%83%A8" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 14:00 - 15:30
+              </span>
+              <span class="absolute top-3 right-3 bg-blue-100 text-blue-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🏞️ 湖畔自然花園
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">河口湖 大石公園 (Oishi Park)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>山梨縣南都留郡富士河口湖町大石 2585</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 80 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>五合目下山約 45 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 十月中下旬大石公園正迎來掃帚草轉紅期！火紅討喜的波波草與河口湖水、富士山構成明信片般的畫面。步道極度平整好走。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=3532822165842880598" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 5.3 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="food" data-keywords="ほうとう蔵 歩成 餺飥麵 黃金餺飥 南瓜味噌 野菜 晚餐">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://i.pinimg.com/736x/f9/73/88/f97388d5b19074c619d85b990190fb6f.jpg" referrerpolicy="no-referrer" alt="ほうとう蔵 歩成" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · 山梨／實景料理照片</span><a href="https://www.yamanashi-kankou.jp/kankou/eat/funari_kawaguchiko.html" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 17:30 - 19:00
+              </span>
+              <span class="absolute top-3 right-3 bg-rose-100 text-rose-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🍱 名物暖心餺飥麵
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">晚餐：ほうとう蔵 歩成 河口湖店</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>山梨縣南都留郡富士河口湖町船津 6931</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 75 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>大石公園出發約 15 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 榮獲三連霸的黃金餺飥麵！秘製南瓜味噌高湯燉煮根莖野菜，寬平麵條軟嫩滑順，對長輩胃腸極度溫暖好消化。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=7702830843336496982" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 5.4 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="hotel" data-keywords="Sunnide Resort 秀峰閣畔 河口湖北岸 逆富士 溫泉 住宿">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://cdn.jalan.jp/jalan/images/pict3L/Y6/Y328136/Y328136399.jpg" referrerpolicy="no-referrer" alt="Sunnide Resort" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · Jalan</span><a href="https://www.jalan.net/en/japan_hotels_ryokan/Ryokan/Yamanashi_Ryokan/Kawaguchiko_Saiko_Fujiyoshida_Syojiko_Motosuko_Ryokan/Kawaguchiko_Saiko_Fujiyoshida_Ryokan/sunnide_resort_hotel/" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 19:30 - 入住
+              </span>
+              <span class="absolute top-3 right-3 bg-emerald-100 text-emerald-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🏨 富士湖北岸名宿
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">秀峰閣畔 Sunnide Resort Yamanashi</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>山梨縣南都留郡富士河口湖町大石 2549-1</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>宿一晚</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🌅 景觀特點：</span><span>正面倒映富士山第一排視角與溫泉</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 位在河口湖北岸最著名的逆富士黃金觀賞地帶。清晨在房內露台或大浴場即可靜賞旭日映照在雪白山頭與湖面的極致景致。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=8184518712217646621" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- DAY 6 SECTION -->
+    <section class="day-group space-y-4" id="section-day6" data-day="day6">
+      <div class="bg-gradient-to-r from-fuji-dark to-fuji-primary text-white p-5 rounded-2xl shadow-sm">
+        <div class="text-xs font-semibold text-fuji-light tracking-wider uppercase">Day 6 ｜ 10月21日 (週三)</div>
+        <h2 class="text-xl sm:text-2xl font-bold mt-1">天空鳥居 ➔ 古都鎌倉 ➔ 鶴岡八幡宮 ➔ 羽田機場返台</h2>
+        <p class="text-xs sm:text-sm text-gray-200 mt-2 font-light">
+          清晨於 Tsunagaru Cafe 享用景觀咖啡並前往河口淺間神社遙拜所（天空鳥居），隨後取道圈央道路前往鎌倉品嘗湘南吻仔魚特色和食，參訪鶴岡八幡宮，最後於 16:30 抵達羽田機場搭機返台。
+        </p>
+        <div class="mt-3 inline-block bg-white/15 px-3 py-1 rounded-lg text-xs font-medium">
+          ✈️ 班機：JL99 (HND 18:25 起飛 ➔ TSA 20:50 抵達台北松山)
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Spot 6.1 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="food" data-keywords="つながるcafe Tsunagaru Cafe 晨光景觀咖啡 早餐 手沖吐司">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://ximg.retty.me/crop/s400x400/q80/das/-/retty/img_repo/2l/01/35993734.jpg" referrerpolicy="no-referrer" alt="つながるcafe" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · Retty</span><a href="https://retty.me/area/PRE19/ARE259/SUB37202/100001762576/" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 07:30 - 08:30
+              </span>
+              <span class="absolute top-3 right-3 bg-rose-100 text-rose-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🍱 晨光景觀咖啡
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">早餐：つながるcafe (Tsunagaru Cafe)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>山梨縣南都留郡富士河口湖町河口 3033</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 50 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>飯店出發約 10 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 眺望晨光下的富士山，享受手沖香醇咖啡、熱壓吐司與自家手作戚風蛋糕，揭開美好清晨。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=13137943543666523026" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 6.2 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="culture" data-keywords="河口淺間神社遙拜所 天空鳥居 朱紅鳥居 富士山">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://tabimaniajapan.com/wp-content/uploads/2025/08/Kawaguchi_Asama_Shrine_Torii_in_the_Sky_Mt_Fuji-1025x1536.jpg" referrerpolicy="no-referrer" alt="天空鳥居" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · Tabimania Japan</span><a href="https://tabimaniajapan.com/japan-trip/kawaguchi-asama-shrines-torii-in-the-sky-a-hidden-scenic-spot-with-mt-fuji-views" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 08:45 - 09:30
+              </span>
+              <span class="absolute top-3 right-3 bg-amber-100 text-amber-800 font-semibold text-xs px-2 py-0.5 rounded">
+                ⛩️ 神社聖境
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">河口淺間神社 遙拜所 (天空鳥居)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>山梨縣南都留郡富士河口湖町河口 1</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 45 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>由咖啡廳車行約 5 分鐘抵達山頂停車場</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 朱紅色的鳥居完美框入神聖壯闊的富士山。可直接駕車至遙拜所旁專屬停車處，避開陡峭階梯攀爬，對長輩十分便利。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=12248559098319694829" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 6.3 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="food" data-keywords="鎌倉 秋本 Akimoto 湘南吻仔魚蓋飯 鎌倉野菜 天婦羅 午餐">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://tblg.k-img.com/restaurant/images/Rvw/151700/151700521.jpg" referrerpolicy="no-referrer" alt="鎌倉秋本" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · 食べログ</span><a href="https://tabelog.com/kanagawa/A1404/A140402/14003222/dtlphotolst/smp2/" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 11:45 - 13:00
+              </span>
+              <span class="absolute top-3 right-3 bg-rose-100 text-rose-800 font-semibold text-xs px-2 py-0.5 rounded">
+                🍱 湘南和食午餐
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">午餐推薦：鎌倉 秋本 (Akimoto)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>神奈川縣鎌倉市小町 1-2-15 3F</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 75 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>河口湖出發經圈央道約 90-100 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 位在小町通入口，主打湘南名物「釜揚吻仔魚蓋飯」與酥脆鮮甜的「鎌倉野菜天婦羅」，口感清爽不膩，極度符合長輩口味。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=7400329094056230992" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 6.4 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="culture" data-keywords="鶴岡八幡宮 小町通 鎌倉 段葛 伴手禮">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://activity.cdn-eztravel.com.tw/TKAI000008481_12.jpg" referrerpolicy="no-referrer" alt="鶴岡八幡宮" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · 易遊網</span><a href="https://activity.eztravel.com.tw/detail/TKAI000008481" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 13:15 - 14:45
+              </span>
+              <span class="absolute top-3 right-3 bg-amber-100 text-amber-800 font-semibold text-xs px-2 py-0.5 rounded">
+                ⛩️ 古都名勝
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">鶴岡八幡宮 ＆ 小町通漫步</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>神奈川縣鎌倉市雪之下 2-1-31</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">⏳ 停留時間：</span><span>約 90 分鐘</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚶 步行前往：</span><span>餐廳步行約 8 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 鎌倉幕府信仰核心！參道「段葛」寬闊平坦好走，朱紅本殿莊嚴宏偉。沿途可採買鎌倉半月餅與焙茶冰淇淋等伴手禮。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=12140409941195325785" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+
+        <!-- Spot 6.5 -->
+        <article class="spot-card bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col justify-between" data-category="transit" data-keywords="羽田機場 返台 JL99 還車 台北松山">
+          <div>
+            <div class="relative h-44 bg-gray-100 overflow-hidden">
+              <img src="https://www.gotokyo.org/tc/plan/airport-access/haneda-airport/images/sub004.jpg" referrerpolicy="no-referrer" alt="羽田機場返台" loading="lazy" decoding="async" class="w-full h-full object-cover">
+<div class="photo-credit"><span>📷 真實實景照片 · GO TOKYO</span><a href="https://www.gotokyo.org/tc/plan/airport-access/haneda-airport/" target="_blank" rel="noopener noreferrer">查看照片來源 ↗</a></div>
+              <span class="absolute bottom-3 left-3 bg-fuji-dark/90 text-white text-xs font-semibold px-2.5 py-1 rounded-md backdrop-blur-sm">
+                ⏰ 16:30 抵達機場
+              </span>
+              <span class="absolute top-3 right-3 bg-gray-800/80 text-white text-xs px-2 py-0.5 rounded">
+                平安歸賦
+              </span>
+            </div>
+            <div class="p-5 space-y-3">
+              <h3 class="text-lg font-bold text-fuji-dark">東京羽田機場 (HND) ➔ 台北松山 (TSA)</h3>
+              <div class="space-y-1.5 text-xs text-gray-600">
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">📍 地址：</span><span>東京都大田區羽田空港</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">✈️ 班機時刻：</span><span>JL99 18:25 起飛 ➔ 20:50 抵達台北松山</span></div>
+                <div class="flex gap-2"><span class="font-semibold text-gray-800 min-w-[65px]">🚗 車程前往：</span><span>鎌倉出發約 60-70 分鐘</span></div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border-l-4 border-fuji-primary text-xs text-gray-600 leading-relaxed">
+                📌 建議於 16:30 前完成還車手續並抵達航廈辦理登機報到。羽田機場出境免稅區設施豐富，可輕鬆採買伴手禮後搭機返台。
+              </div>
+            </div>
+          </div>
+          <div class="p-5 pt-0 flex justify-end">
+            <a href="https://maps.google.com/?cid=15366471343750838933" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-fuji-primary border border-fuji-primary hover:bg-fuji-primary hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              🗺️ Google Maps
+            </a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Practical Tips Section -->
+    <aside class="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-6 shadow-sm">
+      <h3 class="text-base sm:text-lg font-bold text-fuji-accent flex items-center gap-2 mb-3">
+        💡 富士山自駕與帶長輩同行貼心提醒
+      </h3>
+      <ul class="space-y-2 text-xs sm:text-sm text-gray-700 list-disc pl-5">
+        <li><strong>十月中旬保暖裝備：</strong> 河口湖、精進湖早晚氣溫約 8-12°C；富士山五合目海拔 2,305 公尺，體感溫度約 5-8°C 且風大，請務必準備防風外套、圍巾與輕便保暖手套。</li>
+        <li><strong>行車路線與路況預警：</strong> 10/21 最後一天下午自鎌倉前往羽田機場，途經首都高灣岸線可能遇上平日傍晚車潮，請盡量於 15:00 前自鎌倉出發，預留充裕還車與報到時間。</li>
+        <li><strong>長輩動線優化：</strong> 河口淺間神社遙拜所（天空鳥居）建議直接由小路駕車至上方專屬停車場，避開坡道階梯；各大景點（日本平夢露台、世界遺產中心）皆備有無障礙電梯與平整木棧道。</li>
+      </ul>
+    </aside>
+
+  </main>
+
+
+  <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="照片預覽" onclick="closeLightbox(event)">
+    <button aria-label="關閉" onclick="closeLightbox()">×</button>
+    <div>
+      <img id="lightboxImg" src="" alt="">
+      <div id="lightboxCaption" class="lightbox-caption"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-fuji-dark text-white text-center text-xs py-6 mt-12">
+    <p class="opacity-80">富士山全景六日深度環遊手冊 ｜ 祝您旅程平安順心 🌸</p><p class="opacity-60 mt-2 px-4">本頁景點照片均改為實景照片，圖片下方標示來源；部分來源為旅遊網站、旅客實拍或官方網站，請依來源頁面的授權條款使用。</p>
+  </footer>
+
+  <!-- Filter & Search JavaScript -->
+  <script>
+    let currentDay = 'all';
+    let currentCategory = 'all';
+
+    function filterDay(day) {
+      currentDay = day;
+      
+      // Update Tab CSS
+      document.querySelectorAll('.day-tab').forEach(tab => {
+        tab.classList.remove('bg-fuji-primary', 'text-white', 'font-semibold');
+        tab.classList.add('bg-gray-100', 'text-gray-700');
+      });
+
+      const activeTab = document.getElementById(`tab-${day}`);
+      if (activeTab) {
+        activeTab.classList.remove('bg-gray-100', 'text-gray-700');
+        activeTab.classList.add('bg-fuji-primary', 'text-white', 'font-semibold');
+      }
+
+      applyFilters();
+    }
+
+    function filterCategory(cat) {
+      currentCategory = cat;
+
+      // Update Category Buttons
+      document.querySelectorAll('.cat-btn').forEach(btn => {
+        btn.classList.remove('bg-fuji-primary', 'text-white');
+        btn.classList.add('bg-gray-100', 'text-gray-600');
+      });
+
+      const activeCat = document.getElementById(`cat-${cat}`);
+      if (activeCat) {
+        activeCat.classList.remove('bg-gray-100', 'text-gray-600');
+        activeCat.classList.add('bg-fuji-primary', 'text-white');
+      }
+
+      applyFilters();
+    }
+
+    function handleSearch() {
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+      const daySections = document.querySelectorAll('.day-group');
+      let visibleCount = 0;
+
+      daySections.forEach(section => {
+        const sectionDay = section.getAttribute('data-day');
+        const dayMatch = (currentDay === 'all' || currentDay === sectionDay);
+
+        let sectionVisibleSpots = 0;
+        const cards = section.querySelectorAll('.spot-card');
+
+        cards.forEach(card => {
+          const cardCat = card.getAttribute('data-category');
+          const cardKeywords = (card.getAttribute('data-keywords') || '').toLowerCase();
+          const cardText = card.innerText.toLowerCase();
+
+          const catMatch = (currentCategory === 'all' || currentCatMatch(cardCat, currentCategory));
+          const searchMatch = !searchTerm || cardKeywords.includes(searchTerm) || cardText.includes(searchTerm);
+
+          if (dayMatch && catMatch && searchMatch) {
+            card.classList.remove('hidden');
+            sectionVisibleSpots++;
+            visibleCount++;
+          } else {
+            card.classList.add('hidden');
+          }
+        });
+
+        // Hide day header if no spots match in that day
+        if (sectionVisibleSpots > 0) {
+          section.classList.remove('hidden');
+        } else {
+          section.classList.add('hidden');
+        }
+      });
+
+      // Update counter
+      document.getElementById('spotCounter').innerText = visibleCount;
+    }
+
+    function currentCatMatch(cardCat, filterCat) {
+      if (filterCat === 'scenic') return cardCat === 'scenic';
+      if (filterCat === 'food') return cardCat === 'food';
+      if (filterCat === 'hotel') return cardCat === 'hotel';
+      if (filterCat === 'culture') return cardCat === 'culture';
+      return true;
+    }
+
+    // Real-photo lightbox
+    document.querySelectorAll('.spot-card img').forEach(img => {
+      img.addEventListener('click', () => {
+        const box=document.getElementById('lightbox');
+        document.getElementById('lightboxImg').src=img.src;
+        document.getElementById('lightboxImg').alt=img.alt;
+        document.getElementById('lightboxCaption').textContent=img.alt;
+        box.classList.add('open');
+        document.body.style.overflow='hidden';
+      });
+    });
+    function closeLightbox(e){
+      if(e && e.target && e.target.id==='lightboxImg') return;
+      document.getElementById('lightbox').classList.remove('open');
+      document.body.style.overflow='';
+    }
+    document.addEventListener('keydown',e=>{if(e.key==='Escape') closeLightbox();});
+
+  </script>
+</body>
+</html>
